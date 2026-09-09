@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invenio — Carpe Diem</title>
+<meta name="description" content="Invenio — curated emerging artists for corporate and commercial spaces. By Carpe Diem Gallery & Consulting.">
+<link rel="preconnect" href="https://v5.airtableusercontent.com">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="#/gallery">
+    <span class="brand-mark"></span>
+    Invenio <small>Carpe Diem</small>
+  </a>
+  <nav class="nav" id="nav">
+    <a href="#/gallery" data-route="gallery">Works</a>
+    <a href="#/artists" data-route="artists">Artists</a>
+    <a href="#/picks" data-route="picks">My Picks</a>
+  </nav>
+  <div class="header-right">
+    <button class="picks-btn" onclick="location.hash='#/picks'">
+      ♥ Picks <span class="cnt" id="picksCount">0</span>
+    </button>
+  </div>
+</header>
+
+<main id="app" class="wrap"><!-- rendered by app.js --></main>
+
+<div class="footer">Invenio · Carpe Diem Gallery &amp; Consulting · <span id="dataStamp"></span></div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" onclick="closeLightbox()">✕</button>
+  <img id="lbImg" src="" alt="">
+  <div class="lb-cap" id="lbCap"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

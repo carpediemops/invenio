@@ -1,0 +1,59 @@
+name: Build & deploy Invenio
+
+on:
+  workflow_dispatch:        # the "run now" button (manual refresh)
+  schedule:
+    - cron: "0 5 * * *"     # daily automatic refresh, 05:00 UTC (07:00 Rome)
+  push:
+    branches: [ main ]      # redeploy when the site code changes
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      # Reuse already-optimized images between runs so daily syncs are fast.
+      - name: Restore image cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: invenio-img-${{ github.run_id }}
+          restore-keys: |
+            invenio-img-
+
+      - name: Sync from Airtable & build site
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+        run: python3 sync.py
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

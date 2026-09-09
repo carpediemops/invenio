@@ -1,0 +1,8 @@
+_site/
+.cache/
+data.json
+img/
+__pycache__/
+*.pyc
+shot_*.png
+gen_preview.py
