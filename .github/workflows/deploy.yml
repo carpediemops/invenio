@@ -1,11 +1,11 @@
 name: Build & deploy Invenio
 
 on:
-  workflow_dispatch:        # the "run now" button (manual refresh)
+  workflow_dispatch:
   schedule:
-    - cron: "0 5 * * *"     # daily automatic refresh, 05:00 UTC (07:00 Rome)
+    - cron: "0 5 * * *"
   push:
-    branches: [ main ]      # redeploy when the site code changes
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -29,7 +29,6 @@ jobs:
       - name: Install deps
         run: pip install -r requirements.txt
 
-      # Reuse already-optimized images between runs so daily syncs are fast.
       - name: Restore image cache
         uses: actions/cache@v4
         with:
@@ -41,6 +40,7 @@ jobs:
       - name: Sync from Airtable & build site
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
         run: python3 sync.py
 
       - name: Upload Pages artifact
