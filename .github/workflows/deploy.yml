@@ -41,6 +41,7 @@ jobs:
         env:
           AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          AIRTABLE_WRITE_TOKEN: ${{ secrets.AIRTABLE_WRITE_TOKEN }}
         run: python3 sync.py
 
       - name: Upload Pages artifact

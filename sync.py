@@ -25,8 +25,31 @@ CACHE   = pathlib.Path(".cache")
 THUMB_MAX, FULL_MAX, Q = 640, 1500, 82
 MAX_CAROUSEL = 12
 
-T_ARTISTS = "tblX8QknZiu1K4XJ5"
-T_WORKS   = "tblCH0uDzIjDfmIXE"
+T_ARTISTS  = "tblX8QknZiu1K4XJ5"
+T_WORKS    = "tblCH0uDzIjDfmIXE"
+T_PROJECTS = "tbldiUWZbGduoEpoQ"
+T_SAVED    = "tbl33AKqBJGbBNoXm"
+WRITE_TOKEN = os.environ.get("AIRTABLE_WRITE_TOKEN", "").strip()
+# Field IDs the browser needs to talk to Projects/Saved Items directly (favorites feature).
+# Scope note: WRITE_TOKEN (if set) is a separate, narrower-purpose token from the main
+# read-only AIRTABLE_TOKEN above — it's meant only for the Projects/Saved Items flow.
+PROJECTS_CFG = {
+    "enabled": bool(WRITE_TOKEN),
+    "writeToken": WRITE_TOKEN or None,
+    "baseId": BASE,
+    "tables": {"projects": T_PROJECTS, "savedItems": T_SAVED},
+    "fields": {
+        "projectName": "fldxrHgpGLWIsiDdf",
+        "ownerEmail": "fldGtsgj8SZ3nt0VS",
+        "shareId": "fld4OwmJhwdQ7xVWJ",
+        "siName": "fldrd32saPF7EIsUA",
+        "siProject": "fldUNGXpBa2t9OY88",
+        "siArtists": "fldqQ2uXVaV7KILDt",
+        "siArtworks": "fld3GgDNFxOXVIGUP",
+        "siType": "fld95zViJVuo7rb1w",
+        "siProjectShareId": "fldH50uqgBc9kfPFC",
+    },
+}
 F = dict(
     name="flddgzLmXxkVRG0qh", location="fld4y2HHDe2Wje6hs",
     medium="fld3o55Uyb5hSpPNq", style="fldjXHDiBJwAVOhLq",
@@ -179,7 +202,8 @@ def main():
     data = {"generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "counts": {"artists": len(artist_list), "works": len(works)},
             "protected": bool(PASSWORD),
-            "artists": artist_list, "works": works}
+            "artists": artist_list, "works": works,
+            "projects": PROJECTS_CFG}
     payload = json.dumps(data, separators=(",", ":")).encode()
 
     if PASSWORD:

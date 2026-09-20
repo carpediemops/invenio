@@ -29,6 +29,86 @@
 
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1900); }
 
+  /* ---------- projects (shared folders, backed by Airtable) ---------- */
+  const PCFG = () => DATA.projects || { enabled: false };
+  const airHeaders = () => ({ 'Authorization': `Bearer ${PCFG().writeToken}`, 'Content-Type': 'application/json' });
+  const airUrl = (table, path = '') => `https://api.airtable.com/v0/${PCFG().baseId}/${table}${path}`;
+  async function airList(table, filterFormula) {
+    const qs = filterFormula ? ('?filterByFormula=' + encodeURIComponent(filterFormula)) : '';
+    const r = await fetch(airUrl(table) + qs, { headers: airHeaders() });
+    if (!r.ok) throw new Error('Airtable read failed (' + r.status + ')');
+    return (await r.json()).records;
+  }
+  async function airCreate(table, fields) {
+    const r = await fetch(airUrl(table), { method: 'POST', headers: airHeaders(), body: JSON.stringify({ records: [{ fields }], typecast: true }) });
+    if (!r.ok) throw new Error('Airtable write failed (' + r.status + ')');
+    return (await r.json()).records[0];
+  }
+  async function airUpdate(table, id, fields) {
+    const r = await fetch(airUrl(table, '/' + id), { method: 'PATCH', headers: airHeaders(), body: JSON.stringify({ fields, typecast: true }) });
+    if (!r.ok) throw new Error('Airtable update failed (' + r.status + ')');
+    return await r.json();
+  }
+  async function airDelete(table, id) {
+    const r = await fetch(airUrl(table, '/' + id), { method: 'DELETE', headers: airHeaders() });
+    if (!r.ok) throw new Error('Airtable delete failed (' + r.status + ')');
+  }
+  const esc1 = s => String(s == null ? '' : s).replace(/"/g, ''); // strip quotes for safe formula embedding
+
+  const ME_KEY = 'invenio_me';
+  let myEmail = ''; try { myEmail = localStorage.getItem(ME_KEY) || ''; } catch (e) {}
+  function ensureEmail() {
+    if (myEmail) return myEmail;
+    const v = prompt("Quick one-time setup — what's your email? (so we know who added items to a project)");
+    if (v && v.trim()) { myEmail = v.trim(); try { localStorage.setItem(ME_KEY, myEmail); } catch (e) {} }
+    return myEmail;
+  }
+
+  const MYPROJ_KEY = 'invenio_myprojects';
+  let myProjects = []; try { myProjects = JSON.parse(localStorage.getItem(MYPROJ_KEY) || '[]'); } catch (e) {}
+  const saveMyProjects = () => { try { localStorage.setItem(MYPROJ_KEY, JSON.stringify(myProjects)); } catch (e) {} };
+  function rememberProject(p) {
+    const i = myProjects.findIndex(x => x.id === p.id);
+    if (i === -1) myProjects.push(p); else myProjects[i] = p;
+    saveMyProjects();
+  }
+  function forgetProject(id) { myProjects = myProjects.filter(x => x.id !== id); saveMyProjects(); }
+
+  async function createProject(name) {
+    const email = ensureEmail(); if (!email) return null;
+    const F = PCFG().fields;
+    const rec = await airCreate(PCFG().tables.projects, { [F.projectName]: name, [F.ownerEmail]: email });
+    const p = { id: rec.id, shareId: rec.fields[F.shareId], name };
+    rememberProject(p);
+    return p;
+  }
+  async function renameProjectRemote(id, name) {
+    const F = PCFG().fields;
+    await airUpdate(PCFG().tables.projects, id, { [F.projectName]: name });
+    const i = myProjects.findIndex(x => x.id === id); if (i > -1) { myProjects[i].name = name; saveMyProjects(); }
+  }
+  async function addToProject(project, item, kind) {
+    const F = PCFG().fields;
+    const artistId = kind === 'work' ? item.artistId : item.id;
+    const fields = {
+      [F.siProject]: [project.id],
+      [F.siArtists]: [artistId],
+      [F.siType]: kind === 'work' ? 'Work' : 'Artist',
+      [F.siName]: kind === 'work' ? (item.title || 'Untitled') : item.name,
+    };
+    if (kind === 'work') fields[F.siArtworks] = item.title || 'Untitled';
+    await airCreate(PCFG().tables.savedItems, fields);
+    rememberProject(project);
+  }
+  async function loadProjectByShareId(shareId) {
+    const F = PCFG().fields;
+    const projs = await airList(PCFG().tables.projects, `{${F.shareId}}="${esc1(shareId)}"`);
+    if (!projs.length) return null;
+    const proj = projs[0];
+    const items = await airList(PCFG().tables.savedItems, `{${F.siProjectShareId}}="${esc1(shareId)}"`);
+    return { proj, items };
+  }
+
   /* ---------- crypto (password gate) ---------- */
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
   async function decryptBlob(blob, pw) {
@@ -187,6 +267,36 @@
     </div>`;
   }
 
+  const addToBtnHtml = uid => PCFG().enabled ? `<div class="addto-wrap" data-addto="${uid}"><button class="btn btn-light" data-addto-btn="${uid}">+ Add to project</button></div>` : '';
+  function wireAddTo(root, item, kind) {
+    root.querySelectorAll('[data-addto-btn]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const wrap = btn.closest('.addto-wrap');
+        const existing = wrap.querySelector('.addto-menu');
+        if (existing) { existing.remove(); return; }
+        const menu = document.createElement('div'); menu.className = 'addto-menu';
+        const rows = myProjects.map(p => `<button data-pid="${esc(p.id)}">${esc(p.name)}</button>`).join('') || `<div style="padding:9px 10px;color:var(--ink-3);font-size:12.5px">No projects yet</div>`;
+        menu.innerHTML = rows + `<div class="divider"></div><button data-newproj="1">+ New project</button>`;
+        wrap.appendChild(menu);
+        menu.querySelectorAll('[data-pid]').forEach(b => b.addEventListener('click', async ev => {
+          ev.stopPropagation(); menu.remove();
+          const proj = myProjects.find(p => p.id === b.dataset.pid); if (!proj) return;
+          try { await addToProject(proj, item, kind); toast(`Added to "${proj.name}"`); }
+          catch (err) { toast('Could not add — try again'); }
+        }));
+        menu.querySelector('[data-newproj]').addEventListener('click', async ev => {
+          ev.stopPropagation(); menu.remove();
+          const name = prompt('Name this project:'); if (!name || !name.trim()) return;
+          try { const p = await createProject(name.trim()); if (p) { await addToProject(p, item, kind); toast(`Created "${p.name}" and added`); } }
+          catch (err) { toast('Could not create project — try again'); }
+        });
+        const closer = ev => { if (!wrap.contains(ev.target)) { menu.remove(); document.removeEventListener('click', closer); } };
+        setTimeout(() => document.addEventListener('click', closer), 0);
+      });
+    });
+  }
+
   /* ---------- pages ---------- */
   function renderGallery(mode) {
     state.view = mode;
@@ -264,6 +374,7 @@
           <div class="artist-actions" style="margin:14px 0 18px">
             <button class="btn btn-dark" data-heart="${esc(w.id)}">${picks.has(w.id) ? '♥ Saved' : '♥ Save to picks'}</button>
             <button class="btn btn-light" id="zoomBtn">Zoom ⤢</button>
+            ${addToBtnHtml('w-' + w.id)}
           </div>
           ${detailsBlock(a)}
         </div>
@@ -272,7 +383,7 @@
       ${similarWorks.length ? `<div class="section-wrap"><h2 class="section-h">Similar works</h2><div class="section-sub">Sharing medium &amp; style, from other artists</div><div class="detail-works">${similarWorks.map(workCard).join('')}</div></div>` : ''}`;
     $('#zoomBtn')?.addEventListener('click', () => openLightbox(w));
     $('#wdImg')?.addEventListener('click', () => openLightbox(w));
-    wireCards(app); wireHearts(app); setActiveNav('gallery'); window.scrollTo(0, 0);
+    wireCards(app); wireHearts(app); wireAddTo(app, w, 'work'); setActiveNav('gallery'); window.scrollTo(0, 0);
   }
 
   function renderArtist(id) {
@@ -289,6 +400,7 @@
           <div class="artist-tags">${(a.mediums || []).concat(a.styles || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>
           <div class="artist-actions">
             <button class="btn btn-dark" id="saveAllBtn">♥ Save artist's works</button>
+            ${addToBtnHtml('a-' + a.id)}
           </div>
           ${detailsBlock(a)}
         </div>
@@ -304,7 +416,7 @@
       ${similar.length ? `<div class="section-wrap"><h2 class="section-h">Similar artists</h2><div class="section-sub">Sharing medium &amp; style with ${esc(a.name)}</div>
         <div class="artists-grid">${similar.map(artistCard).join('')}</div></div>` : ''}`;
     $('#saveAllBtn')?.addEventListener('click', () => { works.forEach(w => picks.add(w.id)); savePicks(); wireHearts(app); toast(`Added ${works.length} works to your picks`); });
-    wireCards(app); wireHearts(app); wireCarousels(app); setActiveNav('artists'); window.scrollTo(0, 0);
+    wireCards(app); wireHearts(app); wireCarousels(app); wireAddTo(app, a, 'artist'); setActiveNav('artists'); window.scrollTo(0, 0);
   }
   const notFound = () => { app.innerHTML = `<div class="empty"><h2>Not found</h2><p><a href="#/gallery">Back to gallery</a></p></div>`; };
 
@@ -332,11 +444,102 @@
     const link = location.origin + location.pathname + '#/shared?ids=' + encodeURIComponent([...(sharedIds || picks)].join(','));
     app.innerHTML = `<div class="picks-hero"><h1 class="gallery-h1">${isShared ? 'Shared selection' : 'My picks'}</h1>
       <div class="gallery-meta">${works.length} artwork${works.length > 1 ? 's' : ''}${isShared ? ' shared with you' : ' saved in this browser'}</div>
-      ${isShared ? '' : `<div class="picks-actionbar"><div class="share-box"><span>Share link:</span><input id="shareInput" readonly value="${esc(link)}"><button class="btn btn-dark" id="copyBtn">Copy</button></div><button class="btn btn-light" id="clearPicks">Clear all</button></div>`}</div>
+      ${isShared ? '' : `<div class="picks-actionbar"><div class="share-box"><span>Share link:</span><input id="shareInput" readonly value="${esc(link)}"><button class="btn btn-dark" id="copyBtn">Copy</button></div><button class="btn btn-light" id="clearPicks">Clear all</button>${PCFG().enabled ? '<button class="btn btn-light" id="sendProjBtn">Send to a project</button>' : ''}</div>`}</div>
       <section class="gallery-main"><div class="works-grid">${works.map(workCard).join('')}</div></section>`;
     $('#copyBtn')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(link); } catch (e) { $('#shareInput').select(); document.execCommand('copy'); } toast('Link copied — send it to your client'); });
     $('#clearPicks')?.addEventListener('click', () => { if (confirm('Clear all your picks?')) { picks.clear(); savePicks(); renderPicks(); } });
+    $('#sendProjBtn')?.addEventListener('click', async () => {
+      let proj = null;
+      if (myProjects.length) {
+        const label = myProjects.map((p, i) => `${i + 1}. ${p.name}`).join('\n');
+        const pick = prompt(`Send ${works.length} picks to which project?\n${label}\n\nType a number, or type a new name to create one:`);
+        if (!pick) return;
+        const idx = parseInt(pick, 10);
+        proj = (!isNaN(idx) && myProjects[idx - 1]) ? myProjects[idx - 1] : await createProject(pick.trim());
+      } else {
+        const name = prompt('Name this project:'); if (!name || !name.trim()) return;
+        proj = await createProject(name.trim());
+      }
+      if (!proj) return;
+      try { for (const w of works) await addToProject(proj, w, 'work'); toast(`Sent ${works.length} picks to "${proj.name}"`); }
+      catch (e) { toast('Something went wrong partway through — check the project'); }
+    });
     wireCards(app); wireHearts(app); setActiveNav('picks');
+  }
+
+  function renderProjects() {
+    if (!PCFG().enabled) {
+      app.innerHTML = `<div class="empty"><h2>Projects aren't set up yet</h2><p>Ask whoever runs the site to add the write-access token.</p></div>`;
+      setActiveNav('projects'); return;
+    }
+    const rows = myProjects.map(p => `<div class="project-row">
+        <div><p class="project-row-name">${esc(p.name)}</p><p class="project-row-meta">Shared folder · anyone with the link can view &amp; add</p></div>
+        <div class="project-row-actions">
+          <button class="btn btn-light" data-copy="${esc(p.shareId)}">Copy link</button>
+          <button class="btn btn-dark" data-open="${esc(p.shareId)}">Open</button>
+        </div>
+      </div>`).join('');
+    app.innerHTML = `<div class="picks-hero"><h1 class="gallery-h1">Projects</h1>
+      <div class="gallery-meta">Shared folders you've created or opened in this browser</div>
+      <div class="picks-actionbar"><button class="btn btn-dark" id="newProjBtn">+ New project</button><button class="btn btn-light" id="openLinkBtn">Open a shared link</button></div></div>
+      <section class="gallery-main" style="padding:34px 40px">${rows || `<div class="empty"><h2>No projects yet</h2><p>Create one, or open a link someone shared with you.</p></div>`}</section>`;
+    $('#newProjBtn')?.addEventListener('click', async () => {
+      const name = prompt('Name this project:'); if (!name || !name.trim()) return;
+      try { const p = await createProject(name.trim()); if (p) { toast(`Created "${p.name}"`); location.hash = '#/project/' + encodeURIComponent(p.shareId); } }
+      catch (e) { toast('Could not create project — try again'); }
+    });
+    $('#openLinkBtn')?.addEventListener('click', () => {
+      const v = prompt('Paste the project link or just its code:'); if (!v) return;
+      const m = v.match(/#\/project\/([^/?#]+)/);
+      const shareId = m ? decodeURIComponent(m[1]) : v.trim();
+      if (shareId) location.hash = '#/project/' + encodeURIComponent(shareId);
+    });
+    app.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => location.hash = '#/project/' + encodeURIComponent(b.dataset.open)));
+    app.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
+      const link = location.origin + location.pathname + '#/project/' + encodeURIComponent(b.dataset.copy);
+      try { await navigator.clipboard.writeText(link); } catch (e) {}
+      toast('Link copied — share it with your team or client');
+    }));
+    setActiveNav('projects');
+  }
+
+  async function renderProject(shareId) {
+    if (!PCFG().enabled) { app.innerHTML = `<div class="empty"><h2>Projects aren't set up yet</h2></div>`; setActiveNav('projects'); return; }
+    app.innerHTML = `<div class="empty"><h2>Loading…</h2></div>`;
+    let data; try { data = await loadProjectByShareId(shareId); } catch (e) { app.innerHTML = `<div class="empty"><h2>Couldn't load this project</h2><p>Check your connection and try again.</p></div>`; return; }
+    if (!data) { app.innerHTML = `<div class="empty"><h2>Project not found</h2><p>The link may be wrong, or the project was deleted.</p></div>`; setActiveNav('projects'); return; }
+    const { proj, items } = data;
+    const F = PCFG().fields;
+    const name = proj.fields[F.projectName] || 'Untitled project';
+    rememberProject({ id: proj.id, shareId, name });
+    const link = location.origin + location.pathname + '#/project/' + encodeURIComponent(shareId);
+    const rows = items.map(it => {
+      // Item thumbnails aren't wired up yet (would need another lookup call per item) — placeholder box for now.
+      const title = it.fields[F.siName] || 'Untitled';
+      return `<div class="project-item-row" data-siid="${esc(it.id)}">
+        <div style="width:44px;height:44px;border-radius:6px;background:var(--bg-soft);flex-shrink:0"></div>
+        <span>${esc(title)}</span>
+        <button class="pir-x" data-remove="${esc(it.id)}" title="Remove">✕</button>
+      </div>`;
+    }).join('');
+    app.innerHTML = `<div class="detail-back"><a href="#/projects">← Projects</a></div>
+      <div class="picks-hero">
+        <input class="rename-input" id="projName" value="${esc(name)}">
+        <div class="gallery-meta" style="margin-top:8px">${items.length} item${items.length === 1 ? '' : 's'} · anyone with this link can view and add</div>
+        <div class="picks-actionbar"><div class="share-box"><span>Share link:</span><input id="shareInput" readonly value="${esc(link)}"><button class="btn btn-dark" id="copyBtn">Copy</button></div></div>
+      </div>
+      <section class="gallery-main" style="padding:20px 40px 60px">${rows || `<div class="empty"><h2>Nothing saved here yet</h2><p>Browse the gallery and use "+ Add to project" on any work or artist.</p></div>`}</section>`;
+    $('#copyBtn')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(link); } catch (e) {} toast('Link copied'); });
+    $('#projName')?.addEventListener('change', async e => {
+      const v = e.target.value.trim(); if (!v || v === name) return;
+      try { await renameProjectRemote(proj.id, v); toast('Renamed'); } catch (err) { toast('Could not rename — try again'); }
+    });
+    app.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', async () => {
+      const row = b.closest('.project-item-row'); row.style.opacity = '.4';
+      try { await airDelete(PCFG().tables.savedItems, b.dataset.remove); row.remove(); }
+      catch (e) { row.style.opacity = '1'; toast('Could not remove — try again'); }
+    }));
+    setActiveNav('projects');
   }
 
   /* ---------- wiring ---------- */
@@ -389,6 +592,8 @@
     if (h.startsWith('#/artists')) return renderGallery('artists');
     if (h.startsWith('#/shared')) { const ids = new URLSearchParams(h.split('?')[1] || '').get('ids'); return renderPicks((ids || '').split(',').filter(Boolean)); }
     if (h.startsWith('#/picks')) return renderPicks();
+    if (h.startsWith('#/project/')) return renderProject(decodeURIComponent(h.slice(10)));
+    if (h.startsWith('#/projects')) return renderProjects();
     return renderGallery('works');
   }
   boot();
