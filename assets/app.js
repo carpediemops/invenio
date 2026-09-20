@@ -1,10 +1,15 @@
-/* Invenio — Carpe Diem. Static gallery app. Vanilla JS, no build step. */
+/* Art Sourcing Database — Carpe Diem. Static gallery app. Vanilla JS, no build step. */
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const app = $('#app');
   let DATA = { artists: [], works: [] };
   let byArtist = {};
-  const state = { search: '', mediums: new Set(), styles: new Set(), confidence: new Set(), prices: new Set(), licOnly: false, sort: 'featured', view: 'works' };
+  const state = { search: '', mediums: new Set(), styles: new Set(), confidence: new Set(), prices: new Set(), licOnly: false, origin: '', sort: 'featured', view: 'works' };
+
+  // Location is free text like "Brooklyn, NY" (US) or "Turin, Italy" (international).
+  // Classified by checking whether the part after the last comma is a US state/DC/"USA".
+  const US_STATES = new Set(['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC', 'USA', 'US', 'UNITED STATES']);
+  const isDomestic = loc => { if (!loc) return false; const last = loc.split(',').pop().trim().toUpperCase(); return US_STATES.has(last); };
 
   /* ---------- favorites ---------- */
   const LS = 'invenio_picks_v1';
@@ -12,10 +17,15 @@
   try { picks = new Set(JSON.parse(localStorage.getItem(LS) || '[]')); } catch (e) {}
   const savePicks = () => { try { localStorage.setItem(LS, JSON.stringify([...picks])); } catch (e) {} updatePicksCount(); };
   const updatePicksCount = () => { const el = $('#picksCount'); if (el) el.textContent = picks.size; };
-  const priceRank = p => (p ? (p.match(/\$/g) || []).length : 0);
+  // Counts $ signs for the base tier, plus a fractional bump for the "+" (uncapped) tier
+  // so "$$$$$+" ranks strictly above "$$$$$" instead of tying with it.
+  const priceRank = p => p ? (p.match(/\$/g) || []).length + (p.includes('+') ? 0.5 : 0) : 0;
   const esc = s => (s == null ? '' : String(s)).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const priceDisp = p => p ? esc(p.split(' - ')[0].trim()) : '—';
   const priceFull = p => p ? esc(p) : '—';
+  const fmtMoney = n => (n == null || n === '') ? null : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  // "Yes — $1,200" when a licensing price is set, otherwise plain "Yes" / "No"
+  const licensingText = x => !x.licensing ? 'No' : (fmtMoney(x.licensingPrice) ? `Yes — ${fmtMoney(x.licensingPrice)}` : 'Yes');
 
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1900); }
 
@@ -49,7 +59,7 @@
     document.body.classList.add('locked');
     const g = document.createElement('div'); g.id = 'gate'; g.className = 'gate';
     g.innerHTML = `<div class="gate-card">
-      <div class="brand" style="justify-content:center;margin-bottom:6px"><span class="brand-mark"></span> Invenio</div>
+      <div class="brand" style="justify-content:center;margin-bottom:6px"><span class="brand-mark"></span> Art Sourcing Database</div>
       <p class="gate-sub">Carpe Diem Gallery &amp; Consulting</p>
       <input id="gpw" type="password" placeholder="Gallery password" autofocus>
       <button id="gbtn" class="btn btn-dark" style="width:100%;justify-content:center">Enter</button>
@@ -68,11 +78,13 @@
       if (a) {
         w.artistName = a.name; w.location = a.location;
         w.mediums = a.mediums || []; w.styles = a.styles || [];
-        w.price = a.price; w.confidence = a.confidence; w.licensing = !!a.licensing;
+        w.price = a.price; w.confidence = a.confidence; w.licensing = !!a.licensing; w.licensingPrice = a.licensingPrice;
+        w.location = a.location;
       }
+      w.origin = isDomestic(w.location) ? 'domestic' : 'international';
       w.priceRank = priceRank(w.price);
     });
-    DATA.artists.forEach(a => { a.priceRank = priceRank(a.price); a.images = a.images || (a.workThumbs || []); });
+    DATA.artists.forEach(a => { a.priceRank = priceRank(a.price); a.images = a.images || (a.workThumbs || []); a.origin = isDomestic(a.location) ? 'domestic' : 'international'; });
     const st = $('#dataStamp'); if (st) st.textContent = DATA.generated ? ('Updated ' + new Date(DATA.generated).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })) : '';
     updatePicksCount();
     window.addEventListener('hashchange', route);
@@ -93,6 +105,7 @@
     (!state.styles.size || (x.styles || []).some(s => state.styles.has(s))) &&
     (!state.confidence.size || (x.confidence && state.confidence.has(x.confidence))) &&
     (!state.prices.size || state.prices.has(x.price)) &&
+    (!state.origin || x.origin === state.origin) &&
     (!state.licOnly || x.licensing);
 
   function filteredWorks() {
@@ -101,6 +114,7 @@
     if (state.sort === 'price-asc') list.sort((a, b) => a.priceRank - b.priceRank);
     else if (state.sort === 'price-desc') list.sort((a, b) => b.priceRank - a.priceRank);
     else if (state.sort === 'artist') list.sort((a, b) => (a.artistName || '').localeCompare(b.artistName || ''));
+    else if (state.sort === 'location') list.sort((a, b) => (a.location || '').localeCompare(b.location || ''));
     return list;
   }
   function filteredArtists() {
@@ -109,6 +123,7 @@
     if (state.sort === 'artist') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (state.sort === 'price-asc') list.sort((a, b) => a.priceRank - b.priceRank);
     else if (state.sort === 'price-desc') list.sort((a, b) => b.priceRank - a.priceRank);
+    else if (state.sort === 'location') list.sort((a, b) => (a.location || '').localeCompare(b.location || ''));
     return list;
   }
 
@@ -120,7 +135,7 @@
     const img = (w.img && (w.img.thumb || w.img.full)) || '';
     return `<div class="work-card" data-work="${esc(w.id)}">
       <div class="work-imgwrap">
-        ${w.licensing ? '<span class="avail-dot" title="Open for licensing"></span>' : ''}
+        ${w.licensing ? `<span class="avail-dot" title="Open for licensing${fmtMoney(w.licensingPrice) ? ' — ' + fmtMoney(w.licensingPrice) : ''}"></span>` : ''}
         <button class="heart ${on}" data-heart="${esc(w.id)}" title="Save to my picks">♥</button>
         <img loading="lazy" src="${esc(img)}" alt="${esc(w.title)} — ${esc(w.artistName)}">
       </div>
@@ -161,7 +176,7 @@
       ${row('Primary medium', (a.mediums || []).map(esc).join(', '))}
       ${row('Style', (a.styles || []).map(esc).join(', '))}
       ${row('Price range', priceFull(a.price))}
-      ${row('Open for licensing', a.licensing ? 'Yes' : 'No')}
+      ${row('Open for licensing', licensingText(a))}
       ${link('Website', a.website, a.website && a.website.replace(/^https?:\/\/(www\.)?/, ''))}
       ${link('Email', a.email, a.email, true)}
       ${link('Instagram', ig, a.instagram)}
@@ -199,15 +214,16 @@
     wireGallery(); setActiveNav(mode === 'works' ? 'gallery' : 'artists');
   }
   const empty = () => `<div class="empty" style="grid-column:1/-1"><h2>No matches</h2><p>Try clearing a filter or two.</p></div>`;
-  const anyFilter = () => state.search || state.mediums.size || state.styles.size || state.confidence.size || state.prices.size || state.licOnly;
+  const anyFilter = () => state.search || state.mediums.size || state.styles.size || state.confidence.size || state.prices.size || state.licOnly || state.origin;
 
   function filtersPanel(fc) {
     const grp = (label, key, opts, sel, subtle) => `<div class="filter-group">
       <div class="filter-label">${label}${sel.size ? `<span class="clear" data-clear="${key}">clear</span>` : ''}</div>
-      ${opts.map(([v, c]) => `<label class="checkbox-row ${sel.has(v) ? 'on' : ''} ${subtle ? 'subtle' : ''}" data-facet="${key}" data-val="${esc(v)}"><span class="cb"></span>${esc(v.split(' - ')[0])}<span class="count">${c}</span></label>`).join('')}
+      ${opts.map(([v, c]) => `<label class="checkbox-row ${sel.has(v) ? 'on' : ''} ${subtle ? 'subtle' : ''}" data-facet="${key}" data-val="${esc(v)}"><span class="cb"></span>${key === 'prices' ? esc(v) : esc(v.split(' - ')[0])}<span class="count">${c}</span></label>`).join('')}
     </div>`;
     return `<aside class="filters" id="filters">
       <input class="filter-search" id="fsearch" placeholder="Search art, artist, city…" value="${esc(state.search)}">
+      <div class="filter-group"><div class="filter-label">Location</div>${originDropdown()}</div>
       ${grp('Style', 'styles', fc.styles, state.styles)}
       ${grp('Primary medium', 'mediums', fc.mediums, state.mediums)}
       ${grp('Price range', 'prices', fc.prices, state.prices)}
@@ -225,13 +241,19 @@
   const sortDropdown = () => `<select class="dropdown" id="sortSel">
     <option value="featured"${state.sort === 'featured' ? ' selected' : ''}>Featured</option>
     <option value="artist"${state.sort === 'artist' ? ' selected' : ''}>Artist A–Z</option>
+    <option value="location"${state.sort === 'location' ? ' selected' : ''}>Location A–Z</option>
     <option value="price-asc"${state.sort === 'price-asc' ? ' selected' : ''}>Price: low→high</option>
     <option value="price-desc"${state.sort === 'price-desc' ? ' selected' : ''}>Price: high→low</option></select>`;
+  const originDropdown = () => `<select class="dropdown" id="originSel">
+    <option value=""${state.origin === '' ? ' selected' : ''}>All locations</option>
+    <option value="domestic"${state.origin === 'domestic' ? ' selected' : ''}>Domestic (USA)</option>
+    <option value="international"${state.origin === 'international' ? ' selected' : ''}>International</option></select>`;
 
   function renderWork(id) {
     const w = DATA.works.find(x => x.id === id); if (!w) return notFound();
     const a = byArtist[w.artistId] || {};
     const more = DATA.works.filter(x => x.artistId === w.artistId && x.id !== id).slice(0, 8);
+    const similarWorks = findSimilarWorks(w).slice(0, 8);
     app.innerHTML = `
       <div class="detail-back"><a href="#/gallery">← Works</a></div>
       <div class="work-detail">
@@ -246,7 +268,8 @@
           ${detailsBlock(a)}
         </div>
       </div>
-      ${more.length ? `<div class="section-wrap"><h2 class="section-h">More by ${esc(a.name || w.artistName)}</h2><div class="detail-works">${more.map(workCard).join('')}</div></div>` : ''}`;
+      ${more.length ? `<div class="section-wrap"><h2 class="section-h">More by ${esc(a.name || w.artistName)}</h2><div class="detail-works">${more.map(workCard).join('')}</div></div>` : ''}
+      ${similarWorks.length ? `<div class="section-wrap"><h2 class="section-h">Similar works</h2><div class="section-sub">Sharing medium &amp; style, from other artists</div><div class="detail-works">${similarWorks.map(workCard).join('')}</div></div>` : ''}`;
     $('#zoomBtn')?.addEventListener('click', () => openLightbox(w));
     $('#wdImg')?.addEventListener('click', () => openLightbox(w));
     wireCards(app); wireHearts(app); setActiveNav('gallery'); window.scrollTo(0, 0);
@@ -274,7 +297,7 @@
         <div class="stat"><div class="stat-num">${works.length}</div><div class="stat-label">Works</div></div>
         <div class="stat"><div class="stat-num">${priceDisp(a.price)}</div><div class="stat-label">Price range</div></div>
         <div class="stat"><div class="stat-num">${(a.mediums || []).length}</div><div class="stat-label">Mediums</div></div>
-        <div class="stat"><div class="stat-num">${a.licensing ? 'Yes' : '—'}</div><div class="stat-label">Licensing</div></div>
+        <div class="stat"><div class="stat-num">${a.licensing ? (fmtMoney(a.licensingPrice) || 'Yes') : '—'}</div><div class="stat-label">Licensing</div></div>
       </div>
       <div class="section-wrap"><h2 class="section-h">Works</h2><div class="section-sub">${works.length} available</div>
         <div class="detail-works">${works.map(workCard).join('')}</div></div>
@@ -284,6 +307,14 @@
     wireCards(app); wireHearts(app); wireCarousels(app); setActiveNav('artists'); window.scrollTo(0, 0);
   }
   const notFound = () => { app.innerHTML = `<div class="empty"><h2>Not found</h2><p><a href="#/gallery">Back to gallery</a></p></div>`; };
+
+  function findSimilarWorks(w) {
+    const ms = new Set(w.mediums || []), ss = new Set(w.styles || []);
+    return DATA.works.filter(o => o.id !== w.id && o.artistId !== w.artistId).map(o => {
+      let s = 0; (o.mediums || []).forEach(m => ms.has(m) && (s += 1)); (o.styles || []).forEach(x => ss.has(x) && (s += 2)); if (o.price === w.price) s += 1;
+      return { o, s };
+    }).filter(x => x.s > 0).sort((x, y) => y.s - x.s).map(x => x.o);
+  }
 
   function findSimilar(a) {
     const ms = new Set(a.mediums || []), ss = new Set(a.styles || []);
@@ -313,11 +344,12 @@
     const f = $('#filters');
     $('#fsearch')?.addEventListener('input', e => { state.search = e.target.value; debounce(); });
     $('#licToggle')?.addEventListener('click', () => { state.licOnly = !state.licOnly; renderGallery(state.view); });
+    $('#originSel')?.addEventListener('change', e => { state.origin = e.target.value; renderGallery(state.view); });
     f?.querySelectorAll('[data-facet]').forEach(el => el.addEventListener('click', () => { const s = state[el.dataset.facet]; const v = el.dataset.val; s.has(v) ? s.delete(v) : s.add(v); renderGallery(state.view); }));
     f?.querySelectorAll('[data-clear]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); state[el.dataset.clear].clear(); renderGallery(state.view); }));
     app.querySelectorAll('.active-filters [data-facet]').forEach(el => el.addEventListener('click', () => { state[el.dataset.facet].delete(el.dataset.val); renderGallery(state.view); }));
     $('#chipLic')?.addEventListener('click', () => { state.licOnly = false; renderGallery(state.view); });
-    $('#clearAll')?.addEventListener('click', () => { ['mediums', 'styles', 'confidence', 'prices'].forEach(k => state[k].clear()); state.licOnly = false; state.search = ''; renderGallery(state.view); });
+    $('#clearAll')?.addEventListener('click', () => { ['mediums', 'styles', 'confidence', 'prices'].forEach(k => state[k].clear()); state.licOnly = false; state.origin = ''; state.search = ''; renderGallery(state.view); });
     $('#sortSel')?.addEventListener('change', e => { state.sort = e.target.value; renderGallery(state.view); });
     app.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { location.hash = b.dataset.mode === 'works' ? '#/gallery' : '#/artists'; }));
     wireCards(app); wireHearts(app); wireCarousels(app);
