@@ -33,6 +33,11 @@ WRITE_TOKEN = os.environ.get("AIRTABLE_WRITE_TOKEN", "").strip()
 # Field IDs the browser needs to talk to Projects/Saved Items directly (favorites feature).
 # Scope note: WRITE_TOKEN (if set) is a separate, narrower-purpose token from the main
 # read-only AIRTABLE_TOKEN above — it's meant only for the Projects/Saved Items flow.
+if WRITE_TOKEN and not PASSWORD:
+    print("  ! WARNING: AIRTABLE_WRITE_TOKEN is set but SITE_PASSWORD is not — refusing to "
+          "embed the write token, since it would ship in plaintext data.json for anyone to read. "
+          "Set SITE_PASSWORD to enable the Projects feature.", file=sys.stderr)
+    WRITE_TOKEN = ""
 PROJECTS_CFG = {
     "enabled": bool(WRITE_TOKEN),
     "writeToken": WRITE_TOKEN or None,
