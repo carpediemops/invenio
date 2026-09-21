@@ -118,6 +118,14 @@
     const items = await airList(PCFG().tables.savedItems, `FIND("${esc1(shareId)}", ARRAYJOIN({Project Share ID}))`);
     return { proj, items };
   }
+  async function deleteProjectRemote(project) {
+    // Deletes the saved items first so nothing is left orphaned in Airtable,
+    // then the project record itself, then forgets it in this browser.
+    const items = await airList(PCFG().tables.savedItems, `FIND("${esc1(project.shareId)}", ARRAYJOIN({Project Share ID}))`);
+    for (const it of items) await airDelete(PCFG().tables.savedItems, it.id);
+    await airDelete(PCFG().tables.projects, project.id);
+    forgetProject(project.id);
+  }
 
   /* ---------- crypto (password gate) ---------- */
   const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -495,11 +503,12 @@
       app.innerHTML = `<div class="empty"><h2>Projects aren't set up yet</h2><p>Ask whoever runs the site to add the write-access token.</p></div>`;
       setActiveNav('projects'); return;
     }
-    const rows = myProjects.map(p => `<div class="project-row">
+    const rows = myProjects.map(p => `<div class="project-row" data-pid="${esc(p.id)}">
         <div><p class="project-row-name">${esc(p.name)}</p><p class="project-row-meta">Shared folder · anyone with the link can view &amp; add</p></div>
         <div class="project-row-actions">
           <button class="btn btn-light" data-copy="${esc(p.shareId)}">Copy link</button>
           <button class="btn btn-dark" data-open="${esc(p.shareId)}">Open</button>
+          <button class="btn btn-light" data-delete-proj="${esc(p.id)}" title="Delete project">Delete</button>
         </div>
       </div>`).join('');
     app.innerHTML = `<div class="picks-hero"><h1 class="gallery-h1">Projects</h1>
@@ -522,6 +531,13 @@
       const link = location.origin + location.pathname + '#/project/' + encodeURIComponent(b.dataset.copy);
       try { await navigator.clipboard.writeText(link); } catch (e) {}
       toast('Link copied — share it with your team or client');
+    }));
+    app.querySelectorAll('[data-delete-proj]').forEach(b => b.addEventListener('click', async () => {
+      const p = myProjects.find(x => x.id === b.dataset.deleteProj); if (!p) return;
+      if (!confirm(`Delete "${p.name}"? This removes it — and everything saved in it — for anyone with the link. This can't be undone.`)) return;
+      const row = b.closest('.project-row'); row.style.opacity = '.4';
+      try { await deleteProjectRemote(p); toast(`Deleted "${p.name}"`); row.remove(); }
+      catch (e) { row.style.opacity = '1'; toast('Could not delete — try again'); }
     }));
     setActiveNav('projects');
   }
@@ -568,10 +584,15 @@
       <div class="picks-hero">
         <input class="rename-input" id="projName" value="${esc(name)}">
         <div class="gallery-meta" style="margin-top:8px" id="projItemCount">${items.length} item${items.length === 1 ? '' : 's'} · anyone with this link can view and add</div>
-        <div class="picks-actionbar"><div class="share-box"><span>Share link:</span><input id="shareInput" readonly value="${esc(link)}"><button class="btn btn-dark" id="copyBtn">Copy</button></div></div>
+        <div class="picks-actionbar"><div class="share-box"><span>Share link:</span><input id="shareInput" readonly value="${esc(link)}"><button class="btn btn-dark" id="copyBtn">Copy</button></div><button class="btn btn-light" id="deleteProjBtn">Delete project</button></div>
       </div>
       <section class="gallery-main" style="padding:20px 40px 60px">${items.length ? worksHtml + artistsHtml + missingHtml : `<div class="empty"><h2>Nothing saved here yet</h2><p>Browse the gallery and use "+ Add to project" on any work or artist.</p></div>`}</section>`;
     $('#copyBtn')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(link); } catch (e) {} toast('Link copied'); });
+    $('#deleteProjBtn')?.addEventListener('click', async () => {
+      if (!confirm(`Delete "${name}"? This removes it — and everything saved in it — for anyone with the link. This can't be undone.`)) return;
+      try { await deleteProjectRemote({ id: proj.id, shareId, name }); toast(`Deleted "${name}"`); location.hash = '#/projects'; }
+      catch (e) { toast('Could not delete — try again'); }
+    });
     $('#projName')?.addEventListener('change', async e => {
       const v = e.target.value.trim(); if (!v || v === name) return;
       try { await renameProjectRemote(proj.id, v); toast('Renamed'); } catch (err) { toast('Could not rename — try again'); }
