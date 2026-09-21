@@ -94,9 +94,8 @@
       [F.siProject]: [project.id],
       [F.siArtists]: [artistId],
       [F.siType]: kind === 'work' ? 'Work' : 'Artist',
-      [F.siName]: kind === 'work' ? (item.title || 'Untitled') : item.name,
+      [F.siName]: kind === 'work' ? (item.artistName || 'Untitled') : item.name,
     };
-    if (kind === 'work') fields[F.siArtworks] = item.title || 'Untitled';
     await airCreate(PCFG().tables.savedItems, fields);
     rememberProject(project);
   }
@@ -190,7 +189,7 @@
 
   function filteredWorks() {
     const q = state.search.trim().toLowerCase();
-    let list = DATA.works.filter(w => matchFacets(w) && (!q || (w.title + ' ' + w.artistName + ' ' + (w.mediums || []).join(' ') + ' ' + (w.styles || []).join(' ') + ' ' + (w.location || '')).toLowerCase().includes(q)));
+    let list = DATA.works.filter(w => matchFacets(w) && (!q || (w.artistName + ' ' + (w.mediums || []).join(' ') + ' ' + (w.styles || []).join(' ') + ' ' + (w.location || '')).toLowerCase().includes(q)));
     if (state.sort === 'price-asc') list.sort((a, b) => a.priceRank - b.priceRank);
     else if (state.sort === 'price-desc') list.sort((a, b) => b.priceRank - a.priceRank);
     else if (state.sort === 'artist') list.sort((a, b) => (a.artistName || '').localeCompare(b.artistName || ''));
@@ -217,9 +216,8 @@
       <div class="work-imgwrap">
         ${w.licensing ? `<span class="avail-dot" title="Open for licensing${fmtMoney(w.licensingPrice) ? ' — ' + fmtMoney(w.licensingPrice) : ''}"></span>` : ''}
         <button class="heart ${on}" data-heart="${esc(w.id)}" title="Save to my picks">♥</button>
-        <img loading="lazy" src="${esc(img)}" alt="${esc(w.title)} — ${esc(w.artistName)}">
+        <img loading="lazy" src="${esc(img)}" alt="Artwork by ${esc(w.artistName)}">
       </div>
-      <p class="work-title">${esc(w.title || 'Untitled')}</p>
       <p class="work-artist">${esc(w.artistName)}</p>
       <div class="work-meta"><span>${(w.mediums || []).slice(0, 1).map(esc).join('')}</span><span class="priceind">${priceDisp(w.price)}</span></div>
     </div>`;
@@ -367,10 +365,9 @@
     app.innerHTML = `
       <div class="detail-back"><a href="#/gallery">← Works</a></div>
       <div class="work-detail">
-        <div class="wd-img" id="wdImg"><img src="${esc((w.img && (w.img.full || w.img.thumb)) || '')}" alt="${esc(w.title)}"></div>
+        <div class="wd-img" id="wdImg"><img src="${esc((w.img && (w.img.full || w.img.thumb)) || '')}" alt="Artwork by ${esc(a.name || w.artistName)}"></div>
         <div class="wd-side">
-          <h1 class="wd-title">${esc(w.title || 'Untitled')}</h1>
-          <p class="wd-artist"><a href="#/artist/${esc(w.artistId)}">${esc(a.name || w.artistName)}</a></p>
+          <h1 class="wd-title"><a href="#/artist/${esc(w.artistId)}">${esc(a.name || w.artistName)}</a></h1>
           <div class="artist-actions" style="margin:14px 0 18px">
             <button class="btn btn-dark" data-heart="${esc(w.id)}">${picks.has(w.id) ? '♥ Saved' : '♥ Save to picks'}</button>
             <button class="btn btn-light" id="zoomBtn">Zoom ⤢</button>
@@ -578,7 +575,7 @@
   }
 
   /* ---------- lightbox ---------- */
-  function openLightbox(w) { $('#lbImg').src = (w.img && (w.img.full || w.img.thumb)) || ''; $('#lbCap').innerHTML = `<em>${esc(w.title || 'Untitled')}</em> — ${esc(w.artistName)}`; $('#lightbox').classList.add('open'); }
+  function openLightbox(w) { $('#lbImg').src = (w.img && (w.img.full || w.img.thumb)) || ''; $('#lbCap').textContent = w.artistName || ''; $('#lightbox').classList.add('open'); }
   window.closeLightbox = () => $('#lightbox').classList.remove('open');
   $('#lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox') closeLightbox(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });

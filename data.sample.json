@@ -6,12 +6,20 @@
       "id": "rec07UahGKm2JxFhs",
       "name": "Trevor Andrew",
       "location": "Los Angeles, CA",
-      "mediums": ["Painting / Drawing", "Photography / Digital", "3D / Mixed Media / Collage"],
-      "styles": ["Pop", "Abstract", "Expressionist"],
+      "mediums": [
+        "Painting / Drawing",
+        "Photography / Digital",
+        "3D / Mixed Media / Collage"
+      ],
+      "styles": [
+        "Pop",
+        "Abstract",
+        "Expressionist"
+      ],
       "price": "$$$$ - $10k - $25k",
       "licensing": true,
       "licensingPrice": 1200,
-      "bio": "Los Angeles–based multidisciplinary artist working across painting, print and mixed media, with a pop-inflected, graffiti-adjacent visual language.",
+      "bio": "Los Angeles\u2013based multidisciplinary artist working across painting, print and mixed media, with a pop-inflected, graffiti-adjacent visual language.",
       "workThumbs": [
         "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/apkd8zZudRtWmx2017KtaA/_6OXxicWTgh1cmB1gnqIZtnsoetQZUhc9MWQiVOkJCVsZ3ZIExcBUL0q7-pWj5LflaJSdV_dAoU3iVl55C_1GG0U4XkPl0n-40_otegZovO3FieTXJdb8iXoNJhI9iGV6Zoqd7hUlHwuv1AOg6Ts6w/hxLjnqIY5vJ5zc7jZWIU041EEBUjvP9yAMhjWJbH1wQ",
         "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/ts9YZBVuG4CGes0XtzkXRQ/S6q0GcOCUS44qkT8Rmx-3Dg-iX1lTOd24TMeNGOvtJQqIYzKh2bKCUQ7tUDqw9OVdJQG9zOYB6KvdoAvHbL9gxwe_J5JAHVIMBG4Q9p7cTP6z3HDY0XencdGVVlFUNzXLtbhesBu7tDTFixWSq1Swg/sZMbSXt_xSuhFWPosEP0bAb5lkkzXzgjBD6Gc6k5wHA",
@@ -22,8 +30,15 @@
       "id": "rec0Kj5OPqfc4JVF6",
       "name": "Fei Li",
       "location": "Brooklyn, NY",
-      "mediums": ["Painting / Drawing", "3D / Mixed Media / Collage"],
-      "styles": ["Abstract", "Expressionist", "Figurative"],
+      "mediums": [
+        "Painting / Drawing",
+        "3D / Mixed Media / Collage"
+      ],
+      "styles": [
+        "Abstract",
+        "Expressionist",
+        "Figurative"
+      ],
       "price": "$$$ - $5,001- $9,999",
       "licensing": false,
       "bio": "Brooklyn-based painter exploring figuration and abstraction through layered, gestural surfaces.",
@@ -35,15 +50,75 @@
     }
   ],
   "works": [
-    { "id": "recURyk7RdxmIljfB", "title": "Up in the Air", "artistId": "rec07UahGKm2JxFhs", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/apkd8zZudRtWmx2017KtaA/_6OXxicWTgh1cmB1gnqIZtnsoetQZUhc9MWQiVOkJCVsZ3ZIExcBUL0q7-pWj5LflaJSdV_dAoU3iVl55C_1GG0U4XkPl0n-40_otegZovO3FieTXJdb8iXoNJhI9iGV6Zoqd7hUlHwuv1AOg6Ts6w/hxLjnqIY5vJ5zc7jZWIU041EEBUjvP9yAMhjWJbH1wQ" } },
-    { "id": "recZcFrSH3nzxlMXQ", "title": "Gucci Ghost", "artistId": "rec07UahGKm2JxFhs", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/ts9YZBVuG4CGes0XtzkXRQ/S6q0GcOCUS44qkT8Rmx-3Dg-iX1lTOd24TMeNGOvtJQqIYzKh2bKCUQ7tUDqw9OVdJQG9zOYB6KvdoAvHbL9gxwe_J5JAHVIMBG4Q9p7cTP6z3HDY0XencdGVVlFUNzXLtbhesBu7tDTFixWSq1Swg/sZMbSXt_xSuhFWPosEP0bAb5lkkzXzgjBD6Gc6k5wHA" } },
-    { "id": "recF3t4LE7wDaH1R2", "title": "Assemblage III", "artistId": "rec07UahGKm2JxFhs", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/nCexuCKXsYOMY3-qm4jm7A/Lc-SajMtgL2ugnCRcADfegPK1WEhfMMFEbSFb7jHlQ_VWgw9k3Hfl9AAdCtfyq9m0uy5OY9KMpeYCAJREF9c3mMUWcNZgEkDLZisxGs1to7J95KQ4CIjFZHIJ35asIcvRE2A7HhPds51Z_PURBvUCA/hmN69Wh-JBtssa8dHy3icQZD_dMGpXKihqyLoZzho1E" } },
-    { "id": "recRcDcqCjB7UOrvw", "title": "Punch, LA", "artistId": "rec07UahGKm2JxFhs", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/b5fRTNmsVhmcik0_lDzaLA/bZLhSqdHAs0V3n7_TUsa-fmNPc38oRwPz--AFjr7bNBBScTdbpz3n7k2QCnaec3bF6DShtIMQfS3eToHcy_ujFZOXCpVlsLPkQaU2R6VJ0AvSN8Dtb65KABYFBS1zv3HKXQEv1LNMZ1ALU8_7AzbcA/mDvw4HNJXva-5t6QHUBouWiMXLGYdxbNcudR0bki22E" } },
-    { "id": "reckeJvC3rOpcTzRJ", "title": "Broadcast", "artistId": "rec07UahGKm2JxFhs", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/RoGnvCnHvfylB3TQ_NPxHw/9KE0k5XdZ2-4Wp8pw2Z6nkvIU4LKPsbZ6rrPffouANsyLUzvfe_fmjoOtlEb8pipt19-m1_EKam7ei54hdVDDVSIhgL2LA7wp2cs67yVI7BJFn9j1jmIGyFthpHIa_LqWa_6WuzJqCMdRN1Jfc3q8Q/JOWnNxooVgRDP2-U1GazeYQ1JwfgzX8hhbgU7LNcaqE" } },
-    { "id": "recBhlZSUlb96PeM7", "title": "Study No. 6", "artistId": "rec0Kj5OPqfc4JVF6", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/2uhHOoJGNPgK1kmXJNVsdQ/YCSuoxks2z8Z9qnfVyIVO4qc6JmPdycZqtn4v3chsnDt_bqJT_RZ6HiLTrCnyYeY9jWZu-jqyJPEWKR02PNhzHqEC8t9J6HoUAfl3aHJaQ1yHfTpt5n2xAOYHvlT5Et5zD1JMM9wNgUmMACm_fl4SQ/K0ktiUEkxneQu1U8cfYP8u2raTK5Z76WhkpPttfTpqk" } },
-    { "id": "recuj0cUf2cijmJ98", "title": "Study No. 7", "artistId": "rec0Kj5OPqfc4JVF6", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/Vml9C71oZZ6_4c5lQprSLg/noMTYGUAxW1Lo6i5b45eJE0e9LUbtYTtMu7qbgGMACeS5HOPmQpty9NL99I3QtIZpiISc_KU8EhE5YibvlyNG0IMQ9mh72HgoSLT09ufzg5XcG2bIywmHPciLb3jwRzSB27FSWLcQSev9a5UbaJ9yw/sVMcbJ51E25sO-OSl7uETu-N1bRRRJSyUo-sn-G1Y7Q" } },
-    { "id": "rec6XiMNqNJXmAemq", "title": "Study No. 10", "artistId": "rec0Kj5OPqfc4JVF6", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/wrQ3mMaHsknV8nwC88KCHQ/kTO-KmYeV78ztH5W-B0AmpGWdkUeISXM5hIsoh_dLLsn7w1v3CbP6gd9POeEmkkP_Jjt-NRoQ8_B46HFKtVa8R5mMQQCZktAElwwTYDfaXJDmJgLLfBRU28uLHl0SpAZ9Q9j0_dNSmlqc3ncL2ASuQ/Q39-hswu4tfX4iioKKEiZmlB7D5MDbZ2FJEe7VATXto" } },
-    { "id": "recszgD4pmxPysO6t", "title": "Installation View", "artistId": "rec0Kj5OPqfc4JVF6", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/-Lk47Yr30Zk1EMtqW-S0NA/QTWKfw0rB2FlLAiyrPOP1pV3A_yrh312FOyXnwR-CI7AFOBhCRRZ8KKgM_5TdPlxhodWQRbOw0kqyYtexsfzaj3S2T66mrlaSzbA20_5iU4saFUGoW5X5EN0JpjvZiZSVmg17Agd7NTvdV5nbNoj-Q/4EwU0KIW5ybWyYOqgvprkxog_AEnOm6fn2JHYRTkAok" } },
-    { "id": "recbKjiJX5xaA6GC7", "title": "Mother of Nothingness", "artistId": "rec0Kj5OPqfc4JVF6", "img": { "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/gU3RxumxQnvFqZ3e_4racw/_QtKwABSQwOoWy5paZgrP5dd5iYe6bP-2uKyLLKojy9DYr1sdY1HNnWYT2xJd3pmpUT8_JbfQoG5Us6bd1j62_iJCZTTvr_IszIySuQf05dVcJUsHjoJPCEAKy82e7KEwef0Rr5I6ffPKSTK3PnXzw/OyIF6IQnfft_cUV-WhdLS1UoHXZSyZEGAhPinEpFARI" } }
+    {
+      "id": "recURyk7RdxmIljfB",
+      "artistId": "rec07UahGKm2JxFhs",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/apkd8zZudRtWmx2017KtaA/_6OXxicWTgh1cmB1gnqIZtnsoetQZUhc9MWQiVOkJCVsZ3ZIExcBUL0q7-pWj5LflaJSdV_dAoU3iVl55C_1GG0U4XkPl0n-40_otegZovO3FieTXJdb8iXoNJhI9iGV6Zoqd7hUlHwuv1AOg6Ts6w/hxLjnqIY5vJ5zc7jZWIU041EEBUjvP9yAMhjWJbH1wQ"
+      }
+    },
+    {
+      "id": "recZcFrSH3nzxlMXQ",
+      "artistId": "rec07UahGKm2JxFhs",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/ts9YZBVuG4CGes0XtzkXRQ/S6q0GcOCUS44qkT8Rmx-3Dg-iX1lTOd24TMeNGOvtJQqIYzKh2bKCUQ7tUDqw9OVdJQG9zOYB6KvdoAvHbL9gxwe_J5JAHVIMBG4Q9p7cTP6z3HDY0XencdGVVlFUNzXLtbhesBu7tDTFixWSq1Swg/sZMbSXt_xSuhFWPosEP0bAb5lkkzXzgjBD6Gc6k5wHA"
+      }
+    },
+    {
+      "id": "recF3t4LE7wDaH1R2",
+      "artistId": "rec07UahGKm2JxFhs",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/nCexuCKXsYOMY3-qm4jm7A/Lc-SajMtgL2ugnCRcADfegPK1WEhfMMFEbSFb7jHlQ_VWgw9k3Hfl9AAdCtfyq9m0uy5OY9KMpeYCAJREF9c3mMUWcNZgEkDLZisxGs1to7J95KQ4CIjFZHIJ35asIcvRE2A7HhPds51Z_PURBvUCA/hmN69Wh-JBtssa8dHy3icQZD_dMGpXKihqyLoZzho1E"
+      }
+    },
+    {
+      "id": "recRcDcqCjB7UOrvw",
+      "artistId": "rec07UahGKm2JxFhs",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/b5fRTNmsVhmcik0_lDzaLA/bZLhSqdHAs0V3n7_TUsa-fmNPc38oRwPz--AFjr7bNBBScTdbpz3n7k2QCnaec3bF6DShtIMQfS3eToHcy_ujFZOXCpVlsLPkQaU2R6VJ0AvSN8Dtb65KABYFBS1zv3HKXQEv1LNMZ1ALU8_7AzbcA/mDvw4HNJXva-5t6QHUBouWiMXLGYdxbNcudR0bki22E"
+      }
+    },
+    {
+      "id": "reckeJvC3rOpcTzRJ",
+      "artistId": "rec07UahGKm2JxFhs",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/RoGnvCnHvfylB3TQ_NPxHw/9KE0k5XdZ2-4Wp8pw2Z6nkvIU4LKPsbZ6rrPffouANsyLUzvfe_fmjoOtlEb8pipt19-m1_EKam7ei54hdVDDVSIhgL2LA7wp2cs67yVI7BJFn9j1jmIGyFthpHIa_LqWa_6WuzJqCMdRN1Jfc3q8Q/JOWnNxooVgRDP2-U1GazeYQ1JwfgzX8hhbgU7LNcaqE"
+      }
+    },
+    {
+      "id": "recBhlZSUlb96PeM7",
+      "artistId": "rec0Kj5OPqfc4JVF6",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/2uhHOoJGNPgK1kmXJNVsdQ/YCSuoxks2z8Z9qnfVyIVO4qc6JmPdycZqtn4v3chsnDt_bqJT_RZ6HiLTrCnyYeY9jWZu-jqyJPEWKR02PNhzHqEC8t9J6HoUAfl3aHJaQ1yHfTpt5n2xAOYHvlT5Et5zD1JMM9wNgUmMACm_fl4SQ/K0ktiUEkxneQu1U8cfYP8u2raTK5Z76WhkpPttfTpqk"
+      }
+    },
+    {
+      "id": "recuj0cUf2cijmJ98",
+      "artistId": "rec0Kj5OPqfc4JVF6",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/Vml9C71oZZ6_4c5lQprSLg/noMTYGUAxW1Lo6i5b45eJE0e9LUbtYTtMu7qbgGMACeS5HOPmQpty9NL99I3QtIZpiISc_KU8EhE5YibvlyNG0IMQ9mh72HgoSLT09ufzg5XcG2bIywmHPciLb3jwRzSB27FSWLcQSev9a5UbaJ9yw/sVMcbJ51E25sO-OSl7uETu-N1bRRRJSyUo-sn-G1Y7Q"
+      }
+    },
+    {
+      "id": "rec6XiMNqNJXmAemq",
+      "artistId": "rec0Kj5OPqfc4JVF6",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/wrQ3mMaHsknV8nwC88KCHQ/kTO-KmYeV78ztH5W-B0AmpGWdkUeISXM5hIsoh_dLLsn7w1v3CbP6gd9POeEmkkP_Jjt-NRoQ8_B46HFKtVa8R5mMQQCZktAElwwTYDfaXJDmJgLLfBRU28uLHl0SpAZ9Q9j0_dNSmlqc3ncL2ASuQ/Q39-hswu4tfX4iioKKEiZmlB7D5MDbZ2FJEe7VATXto"
+      }
+    },
+    {
+      "id": "recszgD4pmxPysO6t",
+      "artistId": "rec0Kj5OPqfc4JVF6",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/-Lk47Yr30Zk1EMtqW-S0NA/QTWKfw0rB2FlLAiyrPOP1pV3A_yrh312FOyXnwR-CI7AFOBhCRRZ8KKgM_5TdPlxhodWQRbOw0kqyYtexsfzaj3S2T66mrlaSzbA20_5iU4saFUGoW5X5EN0JpjvZiZSVmg17Agd7NTvdV5nbNoj-Q/4EwU0KIW5ybWyYOqgvprkxog_AEnOm6fn2JHYRTkAok"
+      }
+    },
+    {
+      "id": "recbKjiJX5xaA6GC7",
+      "artistId": "rec0Kj5OPqfc4JVF6",
+      "img": {
+        "thumb": "https://v5.airtableusercontent.com/v3/u/57/57/1788573600000/gU3RxumxQnvFqZ3e_4racw/_QtKwABSQwOoWy5paZgrP5dd5iYe6bP-2uKyLLKojy9DYr1sdY1HNnWYT2xJd3pmpUT8_JbfQoG5Us6bd1j62_iJCZTTvr_IszIySuQf05dVcJUsHjoJPCEAKy82e7KEwef0Rr5I6ffPKSTK3PnXzw/OyIF6IQnfft_cUV-WhdLS1UoHXZSyZEGAhPinEpFARI"
+      }
+    }
   ]
 }

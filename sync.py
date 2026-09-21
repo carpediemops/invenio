@@ -12,7 +12,7 @@ off the static host without the gallery password. Images stay as static files
 Run locally:   AIRTABLE_TOKEN=pat_xxx [SITE_PASSWORD=xxx] python3 sync.py
 Read-only. Nothing here writes back to Airtable.
 """
-import os, sys, json, re, io, time, base64, pathlib, shutil, urllib.parse
+import os, sys, json, io, time, base64, pathlib, shutil
 import requests
 from PIL import Image, ImageOps
 
@@ -92,16 +92,6 @@ def air_list(table, fields=None):
         offset = data.get("offset")
         if not offset: break
         time.sleep(0.22)
-
-def clean_title(fname):
-    if not fname: return "Untitled"
-    stem = urllib.parse.unquote(fname).rsplit(".", 1)[0]
-    stem = re.sub(r"[_+]+", " ", stem).strip()
-    stem = re.sub(r"\s+", " ", stem)
-    if (len(stem) > 42 or "$" in stem or re.search(r"\d{3,}", stem)
-            or re.search(r"\d+\s*[x×]\s*\d+", stem, re.I)):
-        return "Untitled"
-    return (stem[:1].upper() + stem[1:]) if stem else "Untitled"
 
 def load_manifest():
     try: return json.loads((CACHE / "manifest.json").read_text())
@@ -193,8 +183,7 @@ def main():
         if not atts: continue
         img = process_image(rec["id"], atts[0], manifest)
         if not img: continue
-        works.append({"id": rec["id"], "title": clean_title(atts[0].get("filename")),
-                      "artistId": aid, "img": img})
+        works.append({"id": rec["id"], "artistId": aid, "img": img})
         a = artists[aid]
         if len(a["images"]) < MAX_CAROUSEL: a["images"].append(img["thumb"])
         n += 1
