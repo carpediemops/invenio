@@ -102,6 +102,9 @@
       [F.siType]: kind === 'work' ? 'Work' : 'Artist',
       [F.siName]: kind === 'work' ? (item.artistName || 'Untitled') : item.name,
     };
+    // Artworks is a plain text field in Airtable (there's no linked-record field to
+    // the Works table), so it takes the work's record id as a string, not an array.
+    if (kind === 'work') fields[F.siArtworks] = item.id;
     await airCreate(PCFG().tables.savedItems, fields);
     rememberProject(project);
   }
@@ -533,32 +536,58 @@
     const name = proj.fields[F.projectName] || 'Untitled project';
     rememberProject({ id: proj.id, shareId, name });
     const link = location.origin + location.pathname + '#/project/' + encodeURIComponent(shareId);
-    const rows = items.map(it => {
-      // Item thumbnails aren't wired up yet (would need another lookup call per item) — placeholder box for now.
-      const title = it.fields[F.siName] || 'Untitled';
-      return `<div class="project-item-row" data-siid="${esc(it.id)}">
+
+    // Resolve each saved item back to the real work/artist so it can render as a
+    // normal gallery card (photo + link to the usual detail page) instead of a
+    // bare text row. Older items saved before the Artworks field existed, or
+    // items whose work/artist has since been removed, fall back to a plain row.
+    const workItems = [], artistItems = [], missingItems = [];
+    items.forEach(it => {
+      const type = it.fields[F.siType];
+      if (type === 'Work') {
+        const w = DATA.works.find(x => x.id === it.fields[F.siArtworks]);
+        w ? workItems.push({ it, w }) : missingItems.push(it);
+      } else {
+        const artistIds = it.fields[F.siArtists] || [];
+        const a = byArtist[artistIds[0]];
+        a ? artistItems.push({ it, a }) : missingItems.push(it);
+      }
+    });
+    const removeBtn = siid => `<button class="proj-remove" data-remove="${esc(siid)}" title="Remove from project">✕</button>`;
+    const worksHtml = workItems.length ? `<div class="section-wrap"><h2 class="section-h">Artworks</h2>
+      <div class="works-grid">${workItems.map(({ it, w }) => `<div class="proj-tile" data-siid="${esc(it.id)}">${workCard(w)}${removeBtn(it.id)}</div>`).join('')}</div></div>` : '';
+    const artistsHtml = artistItems.length ? `<div class="section-wrap"><h2 class="section-h">Artists</h2>
+      <div class="artists-grid">${artistItems.map(({ it, a }) => `<div class="proj-tile" data-siid="${esc(it.id)}">${artistCard(a)}${removeBtn(it.id)}</div>`).join('')}</div></div>` : '';
+    const missingHtml = missingItems.length ? `<div class="section-wrap">${missingItems.map(it => `<div class="project-item-row" data-siid="${esc(it.id)}">
         <div style="width:44px;height:44px;border-radius:6px;background:var(--bg-soft);flex-shrink:0"></div>
-        <span>${esc(title)}</span>
+        <span>${esc(it.fields[F.siName] || 'Untitled')}</span>
         <button class="pir-x" data-remove="${esc(it.id)}" title="Remove">✕</button>
-      </div>`;
-    }).join('');
+      </div>`).join('')}</div>` : '';
+
     app.innerHTML = `<div class="detail-back"><a href="#/projects">← Projects</a></div>
       <div class="picks-hero">
         <input class="rename-input" id="projName" value="${esc(name)}">
-        <div class="gallery-meta" style="margin-top:8px">${items.length} item${items.length === 1 ? '' : 's'} · anyone with this link can view and add</div>
+        <div class="gallery-meta" style="margin-top:8px" id="projItemCount">${items.length} item${items.length === 1 ? '' : 's'} · anyone with this link can view and add</div>
         <div class="picks-actionbar"><div class="share-box"><span>Share link:</span><input id="shareInput" readonly value="${esc(link)}"><button class="btn btn-dark" id="copyBtn">Copy</button></div></div>
       </div>
-      <section class="gallery-main" style="padding:20px 40px 60px">${rows || `<div class="empty"><h2>Nothing saved here yet</h2><p>Browse the gallery and use "+ Add to project" on any work or artist.</p></div>`}</section>`;
+      <section class="gallery-main" style="padding:20px 40px 60px">${items.length ? worksHtml + artistsHtml + missingHtml : `<div class="empty"><h2>Nothing saved here yet</h2><p>Browse the gallery and use "+ Add to project" on any work or artist.</p></div>`}</section>`;
     $('#copyBtn')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(link); } catch (e) {} toast('Link copied'); });
     $('#projName')?.addEventListener('change', async e => {
       const v = e.target.value.trim(); if (!v || v === name) return;
       try { await renameProjectRemote(proj.id, v); toast('Renamed'); } catch (err) { toast('Could not rename — try again'); }
     });
-    app.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', async () => {
-      const row = b.closest('.project-item-row'); row.style.opacity = '.4';
-      try { await airDelete(PCFG().tables.savedItems, b.dataset.remove); row.remove(); }
-      catch (e) { row.style.opacity = '1'; toast('Could not remove — try again'); }
+    let remaining = items.length;
+    app.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', async e => {
+      e.stopPropagation();
+      const row = b.closest('.proj-tile, .project-item-row'); row.style.opacity = '.4';
+      try {
+        await airDelete(PCFG().tables.savedItems, b.dataset.remove); row.remove();
+        remaining -= 1;
+        const countEl = $('#projItemCount');
+        if (countEl) countEl.textContent = `${remaining} item${remaining === 1 ? '' : 's'} · anyone with this link can view and add`;
+      } catch (e) { row.style.opacity = '1'; toast('Could not remove — try again'); }
     }));
+    wireCards(app); wireHearts(app); wireCarousels(app);
     setActiveNav('projects');
   }
 
