@@ -4,7 +4,7 @@
   const app = $('#app');
   let DATA = { artists: [], works: [] };
   let byArtist = {};
-  const state = { search: '', mediums: new Set(), styles: new Set(), confidence: new Set(), prices: new Set(), licOnly: false, origin: '', sort: 'featured', view: 'works' };
+  const state = { search: '', mediums: new Set(), styles: new Set(), confidence: new Set(), prices: new Set(), licOnly: false, origin: '', region: '', sort: 'featured', view: 'works' };
 
   // Location is free text like "Brooklyn, NY" (US) or "Turin, Italy" (international).
   // Classified by checking whether the part after the last comma is a US state/DC/"USA".
@@ -34,19 +34,25 @@
   const airHeaders = () => ({ 'Authorization': `Bearer ${PCFG().writeToken}`, 'Content-Type': 'application/json' });
   const airUrl = (table, path = '') => `https://api.airtable.com/v0/${PCFG().baseId}/${table}${path}`;
   async function airList(table, filterFormula) {
-    const qs = filterFormula ? ('?filterByFormula=' + encodeURIComponent(filterFormula)) : '';
+    const qs = '?returnFieldsByFieldId=true' + (filterFormula ? '&filterByFormula=' + encodeURIComponent(filterFormula) : '');
     const r = await fetch(airUrl(table) + qs, { headers: airHeaders() });
     if (!r.ok) throw new Error('Airtable read failed (' + r.status + ')');
     return (await r.json()).records;
   }
   async function airCreate(table, fields) {
-    const r = await fetch(airUrl(table), { method: 'POST', headers: airHeaders(), body: JSON.stringify({ records: [{ fields }], typecast: true }) });
+    const r = await fetch(airUrl(table), { method: 'POST', headers: airHeaders(), body: JSON.stringify({ records: [{ fields }], typecast: true, returnFieldsByFieldId: true }) });
     if (!r.ok) throw new Error('Airtable write failed (' + r.status + ')');
     return (await r.json()).records[0];
   }
   async function airUpdate(table, id, fields) {
-    const r = await fetch(airUrl(table, '/' + id), { method: 'PATCH', headers: airHeaders(), body: JSON.stringify({ fields, typecast: true }) });
+    const r = await fetch(airUrl(table, '/' + id), { method: 'PATCH', headers: airHeaders(), body: JSON.stringify({ fields, typecast: true, returnFieldsByFieldId: true }) });
     if (!r.ok) throw new Error('Airtable update failed (' + r.status + ')');
+    return await r.json();
+  }
+  async function airGet(table, id) {
+    const r = await fetch(airUrl(table, '/' + id) + '?returnFieldsByFieldId=true', { headers: airHeaders() });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error('Airtable read failed (' + r.status + ')');
     return await r.json();
   }
   async function airDelete(table, id) {
@@ -100,11 +106,13 @@
     rememberProject(project);
   }
   async function loadProjectByShareId(shareId) {
-    const F = PCFG().fields;
-    const projs = await airList(PCFG().tables.projects, `{${F.shareId}}="${esc1(shareId)}"`);
-    if (!projs.length) return null;
-    const proj = projs[0];
-    const items = await airList(PCFG().tables.savedItems, `{${F.siProjectShareId}}="${esc1(shareId)}"`);
+    // Share ID is a formula field that just evaluates to RECORD_ID(), so the
+    // share id IS the project's record id — fetch it directly rather than
+    // searching, and sidestep filterByFormula (which needs field NAMES, never
+    // field IDs — a bug that used to live here).
+    const proj = await airGet(PCFG().tables.projects, shareId);
+    if (!proj) return null;
+    const items = await airList(PCFG().tables.savedItems, `FIND("${esc1(shareId)}", ARRAYJOIN({Project}))`);
     return { proj, items };
   }
 
@@ -161,9 +169,14 @@
         w.location = a.location;
       }
       w.origin = isDomestic(w.location) ? 'domestic' : 'international';
+      w.region = (w.location || '').split(',').pop().trim();
       w.priceRank = priceRank(w.price);
     });
-    DATA.artists.forEach(a => { a.priceRank = priceRank(a.price); a.images = a.images || (a.workThumbs || []); a.origin = isDomestic(a.location) ? 'domestic' : 'international'; });
+    DATA.artists.forEach(a => {
+      a.priceRank = priceRank(a.price); a.images = a.images || (a.workThumbs || []);
+      a.origin = isDomestic(a.location) ? 'domestic' : 'international';
+      a.region = (a.location || '').split(',').pop().trim();
+    });
     const st = $('#dataStamp'); if (st) st.textContent = DATA.generated ? ('Updated ' + new Date(DATA.generated).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })) : '';
     updatePicksCount();
     window.addEventListener('hashchange', route);
@@ -185,6 +198,7 @@
     (!state.confidence.size || (x.confidence && state.confidence.has(x.confidence))) &&
     (!state.prices.size || state.prices.has(x.price)) &&
     (!state.origin || x.origin === state.origin) &&
+    (!state.region || x.region === state.region) &&
     (!state.licOnly || x.licensing);
 
   function filteredWorks() {
@@ -305,7 +319,7 @@
       ? `<div class="works-grid">${items.map(workCard).join('') || empty()}</div>`
       : `<div class="artists-grid">${items.map(artistCard).join('') || empty()}</div>`;
     app.innerHTML = `<div class="gallery-layout">
-      ${filtersPanel(fc)}
+      ${filtersPanel(fc, base)}
       <section class="gallery-main">
         <div class="gallery-toolbar">
           <div><h1 class="gallery-h1">${mode === 'works' ? 'Works' : 'Artists'}</h1>
@@ -322,16 +336,24 @@
     wireGallery(); setActiveNav(mode === 'works' ? 'gallery' : 'artists');
   }
   const empty = () => `<div class="empty" style="grid-column:1/-1"><h2>No matches</h2><p>Try clearing a filter or two.</p></div>`;
-  const anyFilter = () => state.search || state.mediums.size || state.styles.size || state.confidence.size || state.prices.size || state.licOnly || state.origin;
+  const anyFilter = () => state.search || state.mediums.size || state.styles.size || state.confidence.size || state.prices.size || state.licOnly || state.origin || state.region;
 
-  function filtersPanel(fc) {
+  function regionDropdown(base) {
+    if (!state.origin) return '';
+    const opts = [...new Set(base.filter(x => x.origin === state.origin && x.region).map(x => x.region))].sort((a, b) => a.localeCompare(b));
+    const label = state.origin === 'domestic' ? 'state' : 'country';
+    return `<select class="dropdown" id="regionSel" style="margin-top:8px">
+      <option value="">All ${label}s</option>
+      ${opts.map(r => `<option value="${esc(r)}"${state.region === r ? ' selected' : ''}>${esc(r)}</option>`).join('')}</select>`;
+  }
+  function filtersPanel(fc, base) {
     const grp = (label, key, opts, sel, subtle) => `<div class="filter-group">
       <div class="filter-label">${label}${sel.size ? `<span class="clear" data-clear="${key}">clear</span>` : ''}</div>
       ${opts.map(([v, c]) => `<label class="checkbox-row ${sel.has(v) ? 'on' : ''} ${subtle ? 'subtle' : ''}" data-facet="${key}" data-val="${esc(v)}"><span class="cb"></span>${key === 'prices' ? esc(v) : esc(v.split(' - ')[0])}<span class="count">${c}</span></label>`).join('')}
     </div>`;
     return `<aside class="filters" id="filters">
       <input class="filter-search" id="fsearch" placeholder="Search art, artist, city…" value="${esc(state.search)}">
-      <div class="filter-group"><div class="filter-label">Location</div>${originDropdown()}</div>
+      <div class="filter-group"><div class="filter-label">Location</div>${originDropdown()}${regionDropdown(base)}</div>
       ${grp('Style', 'styles', fc.styles, state.styles)}
       ${grp('Primary medium', 'mediums', fc.mediums, state.mediums)}
       ${grp('Price range', 'prices', fc.prices, state.prices)}
@@ -343,6 +365,7 @@
     const chips = []; const add = (k, v) => chips.push(`<span class="chip">${esc(v.split(' - ')[0])}<span class="x" data-facet="${k}" data-val="${esc(v)}">✕</span></span>`);
     state.styles.forEach(v => add('styles', v)); state.mediums.forEach(v => add('mediums', v)); state.prices.forEach(v => add('prices', v)); state.confidence.forEach(v => add('confidence', v));
     if (state.licOnly) chips.push(`<span class="chip">Licensing<span class="x" id="chipLic">✕</span></span>`);
+    if (state.region) chips.push(`<span class="chip">${esc(state.region)}<span class="x" id="chipRegion">✕</span></span>`);
     if (!chips.length) return '';
     return `<div class="active-filters">${chips.join('')}<span class="chip" style="cursor:pointer" id="clearAll">Clear all</span></div>`;
   }
@@ -544,12 +567,14 @@
     const f = $('#filters');
     $('#fsearch')?.addEventListener('input', e => { state.search = e.target.value; debounce(); });
     $('#licToggle')?.addEventListener('click', () => { state.licOnly = !state.licOnly; renderGallery(state.view); });
-    $('#originSel')?.addEventListener('change', e => { state.origin = e.target.value; renderGallery(state.view); });
+    $('#originSel')?.addEventListener('change', e => { state.origin = e.target.value; state.region = ''; renderGallery(state.view); });
+    $('#regionSel')?.addEventListener('change', e => { state.region = e.target.value; renderGallery(state.view); });
     f?.querySelectorAll('[data-facet]').forEach(el => el.addEventListener('click', () => { const s = state[el.dataset.facet]; const v = el.dataset.val; s.has(v) ? s.delete(v) : s.add(v); renderGallery(state.view); }));
     f?.querySelectorAll('[data-clear]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); state[el.dataset.clear].clear(); renderGallery(state.view); }));
     app.querySelectorAll('.active-filters [data-facet]').forEach(el => el.addEventListener('click', () => { state[el.dataset.facet].delete(el.dataset.val); renderGallery(state.view); }));
     $('#chipLic')?.addEventListener('click', () => { state.licOnly = false; renderGallery(state.view); });
-    $('#clearAll')?.addEventListener('click', () => { ['mediums', 'styles', 'confidence', 'prices'].forEach(k => state[k].clear()); state.licOnly = false; state.origin = ''; state.search = ''; renderGallery(state.view); });
+    $('#chipRegion')?.addEventListener('click', () => { state.region = ''; renderGallery(state.view); });
+    $('#clearAll')?.addEventListener('click', () => { ['mediums', 'styles', 'confidence', 'prices'].forEach(k => state[k].clear()); state.licOnly = false; state.origin = ''; state.region = ''; state.search = ''; renderGallery(state.view); });
     $('#sortSel')?.addEventListener('change', e => { state.sort = e.target.value; renderGallery(state.view); });
     app.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { location.hash = b.dataset.mode === 'works' ? '#/gallery' : '#/artists'; }));
     wireCards(app); wireHearts(app); wireCarousels(app);
