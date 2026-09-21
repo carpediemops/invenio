@@ -112,7 +112,7 @@
     // field IDs — a bug that used to live here).
     const proj = await airGet(PCFG().tables.projects, shareId);
     if (!proj) return null;
-    const items = await airList(PCFG().tables.savedItems, `FIND("${esc1(shareId)}", ARRAYJOIN({Project}))`);
+    const items = await airList(PCFG().tables.savedItems, `FIND("${esc1(shareId)}", ARRAYJOIN({Project Share ID}))`);
     return { proj, items };
   }
 
